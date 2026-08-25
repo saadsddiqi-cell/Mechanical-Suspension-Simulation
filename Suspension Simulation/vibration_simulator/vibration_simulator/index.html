@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Mechanical Vibration & Suspension Simulator</title>
+    <link rel="stylesheet" href="index.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Dashboard Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="pulse-ring"></span>
+                <h1>DYNA-RIDE</h1>
+                <span class="badge">CO-SIMULATOR v1.0</span>
+            </div>
+            <div class="header-description">
+                Interactive Mechanical Vibration & Suspension Co-Simulator (2nd-Order ODE)
+            </div>
+            <div class="serial-status-bar" id="serialStatusBar">
+                <span class="status-dot disconnected" id="statusDot"></span>
+                <span class="status-text" id="statusText">HARDWARE DISCONNECTED</span>
+                <button class="btn btn-connect" id="btnConnect">CONNECT HARDWARE</button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <main class="dashboard-grid">
+            
+            <!-- COLUMN 1: CONTROL SYSTEM PANEL -->
+            <section class="card control-panel">
+                <div class="card-header">
+                    <span class="icon">⚙️</span>
+                    <h2>System Parameters</h2>
+                </div>
+                <div class="card-body">
+                    <!-- Sliders for Mass, Stiffness, Damping -->
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <span class="label">Mass (M)</span>
+                            <span class="value-badge" id="valMass">5.0 kg</span>
+                        </div>
+                        <input type="range" id="sliderMass" min="1.0" max="25.0" step="0.1" value="5.0" class="slider">
+                        <span class="slider-desc">Inertial resistance to acceleration. Higher mass slows frequency.</span>
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <span class="label">Spring Stiffness (K)</span>
+                            <span class="value-badge" id="valStiffness">150 N/m</span>
+                        </div>
+                        <input type="range" id="sliderStiffness" min="20" max="600" step="5" value="150" class="slider">
+                        <span class="slider-desc">Restoring force multiplier. High stiffness increases frequency.</span>
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <span class="label">Damping Coefficient (B)</span>
+                            <span class="value-badge" id="valDamping">25.0 N·s/m</span>
+                        </div>
+                        <input type="range" id="sliderDamping" min="0.0" max="100.0" step="0.5" value="25.0" class="slider">
+                        <span class="slider-desc">Viscous drag damping. Dissipates kinetic energy into heat.</span>
+                    </div>
+
+                    <!-- Damping Ratio Dashboard (Gauge & Math) -->
+                    <div class="damping-ratio-box" id="dampingRatioBox">
+                        <div class="math-formula">
+                            &zeta; = B / (2&radic;KM)
+                        </div>
+                        <div class="ratio-row">
+                            <span class="ratio-label">Damping Ratio (&zeta;):</span>
+                            <span class="ratio-value" id="valZeta">0.46</span>
+                        </div>
+                        <div class="ratio-bar-container">
+                            <div class="ratio-bar-fill" id="zetaBarFill"></div>
+                            <div class="ratio-marker" style="left: 50%;"></div> <!-- Critical line -->
+                        </div>
+                        <div class="damping-state" id="dampingStateText">UNDERDAMPED (Oscillatory)</div>
+                    </div>
+
+                    <!-- Simulator Mode Toggle -->
+                    <div class="mode-select-group">
+                        <span class="group-title">Simulation Model</span>
+                        <div class="btn-group">
+                            <button class="btn btn-mode active" id="btnModeQuarter">Quarter-Car (1-DOF)</button>
+                            <button class="btn btn-mode" id="btnModeHalf">Half-Car (2-DOF Pitch)</button>
+                        </div>
+                    </div>
+
+                    <!-- Speed slider for Half-Car travel delay -->
+                    <div class="slider-group hidden" id="speedGroup">
+                        <div class="slider-label-row">
+                            <span class="label">Vehicle Velocity (V)</span>
+                            <span class="value-badge" id="valSpeed">40 km/h</span>
+                        </div>
+                        <input type="range" id="sliderSpeed" min="10" max="120" step="5" value="40" class="slider">
+                        <span class="slider-desc">Speed determines time lag between front and rear wheels hitting road bumps.</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COLUMN 2: EXCITATION SOURCE & DYNAMICS -->
+            <section class="card dynamics-panel">
+                <div class="card-header">
+                    <span class="icon">📈</span>
+                    <h2>Excitation & Physics</h2>
+                </div>
+                <div class="card-body">
+                    <!-- Signal Selection -->
+                    <div class="signal-selector">
+                        <span class="group-title">Road Excitation Profile</span>
+                        <div class="signal-grid">
+                            <button class="btn btn-signal active" data-signal="step">
+                                <span class="sig-icon">🕳️</span>
+                                <span class="sig-name">Step (Pothole)</span>
+                            </button>
+                            <button class="btn btn-signal" data-signal="impulse">
+                                <span class="sig-icon">⚡</span>
+                                <span class="sig-name">Impulse (Bump)</span>
+                            </button>
+                            <button class="btn btn-signal" data-signal="sine">
+                                <span class="sig-icon">〰️</span>
+                                <span class="sig-name">Sine (Wavy Road)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sine Wave Settings (Conditional) -->
+                    <div class="sine-settings hidden" id="sineSettings">
+                        <div class="slider-group">
+                            <div class="slider-label-row">
+                                <span class="label">Road Frequency (f)</span>
+                                <span class="value-badge" id="valFreq">1.5 Hz</span>
+                            </div>
+                            <input type="range" id="sliderFreq" min="0.2" max="5.0" step="0.1" value="1.5" class="slider">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-label-row">
+                                <span class="label">Road Amplitude</span>
+                                <span class="value-badge" id="valAmp">4.0 cm</span>
+                            </div>
+                            <input type="range" id="sliderAmp" min="1.0" max="10.0" step="0.5" value="4.0" class="slider">
+                        </div>
+                    </div>
+
+                    <!-- Manual Controls -->
+                    <div class="action-buttons">
+                        <button class="btn btn-action btn-trigger" id="btnTrigger">TRIGGER ROAD BUMP</button>
+                        <button class="btn btn-action btn-reset" id="btnReset">RESET SIMULATION</button>
+                    </div>
+
+                    <!-- Real-time Plotting Canvas -->
+                    <div class="plot-container">
+                        <div class="plot-legend">
+                            <span class="legend-item"><span class="color-dot road-dot"></span>Road Surface y(t)</span>
+                            <span class="legend-item"><span class="color-dot car-dot"></span>Car Displacement x(t)</span>
+                            <span class="legend-item hidden" id="legendRear"><span class="color-dot rear-dot"></span>Rear Wheel</span>
+                        </div>
+                        <canvas id="chartCanvas"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COLUMN 3: REAL-TIME 2D ANIMATION -->
+            <section class="card animation-panel">
+                <div class="card-header">
+                    <span class="icon">🚗</span>
+                    <h2>Visualizer Window</h2>
+                </div>
+                <div class="card-body animation-body">
+                    <canvas id="animCanvas"></canvas>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Status Bar & Hardware Monitor -->
+        <footer class="app-footer">
+            <div class="console-card">
+                <div class="console-header">
+                    <h3>SYSTEM OUTPUT STREAM & HARDWARE CONFIGURATION</h3>
+                    <div class="servo-feedback">
+                        Servo Left: <span id="lblServoLeft" class="mono-badge">90&deg;</span> | 
+                        Servo Right: <span id="lblServoRight" class="mono-badge">90&deg;</span>
+                    </div>
+                </div>
+                <div class="console-body">
+                    <div class="console-log" id="consoleLog">
+                        [SYSTEM] Ready. Select a COM port and click 'CONNECT HARDWARE' to link physical servos.
+[SYSTEM] Software solving engine: 4th-Order Runge Kutta (RK4) executing at 200Hz.
+                    </div>
+                    <div class="connection-tip">
+                        <strong>Redesign Tip:</strong> To eliminate physical motor delay and torque issues, run the Arduino at 115200 Baud, connect a dedicated external 5V 3A DC power supply, and use rigid mechanical control arms rather than floppy strings.
+                    </div>
+                </div>
+            </div>
+            <div class="copyright">
+                Interactive Engineering Lab Research Project &copy; 2026. All rights reserved.
+            </div>
+        </footer>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
